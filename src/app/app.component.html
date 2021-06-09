@@ -1,2 +1,31 @@
-<button (click)="clearPaper()">Clear</button>
-<canvas resize #myCanvas></canvas>
+<mat-card>
+  <mat-card-content>
+    <h2>Brush config</h2>
+    <section>
+      <button (click)="clearPaper()">Clear</button>
+      <button (click)="undo()">Undo</button>
+    </section>
+    <section>
+      <mat-slider min="1" max="10" step="0.5" [(ngModel)]="strokeWidth"></mat-slider>
+    </section>
+    <section>
+    <mat-form-field *ngIf="pointer">
+      <input matInput type="text" name="Test" id="test" [(ngModel)]="pointer.content">
+    </mat-form-field>
+    </section>
+    <section>
+      <input type="color" matInput [(ngModel)]="color">
+    </section>
+    <mat-form-field>
+      <mat-label>Tool</mat-label>
+      <mat-select [(ngModel)]="activeTool" (valueChange)="changeActiveTool($event)">
+        <mat-option [value]="'brush'">Brush</mat-option>
+        <mat-option [value]="'eraser'">Eraser</mat-option>
+      </mat-select>
+
+    </mat-form-field>
+  </mat-card-content>
+</mat-card>
+<div class="c-container">
+  <canvas resize #myCanvas></canvas>
+</div>
