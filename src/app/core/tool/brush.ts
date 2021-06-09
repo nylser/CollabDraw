@@ -1,13 +1,14 @@
 import {HasColor, HasStrokeWidth, Tool} from "./tool";
 import * as paper from 'paper';
 import {applyMixins} from "../types/utils";
+import {Path} from "../items/path";
 
 class Brush extends Tool {
-  currentPath: paper.Path | undefined;
+  currentPath: Path | undefined;
   readonly name: string = 'Brush';
 
   onMouseDown = (event: any) => {
-    this.currentPath = new paper.Path();
+    this.currentPath = new Path();
     this.currentPath.strokeColor = this.getColor();
     this.currentPath.strokeWidth = this.strokeWidth;
     this.currentPath.strokeJoin = 'round';

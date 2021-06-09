@@ -10,11 +10,13 @@ import {MatCardModule} from "@angular/material/card";
 import {MatInputModule} from "@angular/material/input";
 import {MatSelectModule} from "@angular/material/select";
 import {MatOptionModule} from "@angular/material/core";
+import { CanvasComponent } from './core/components/canvas/canvas.component';
 
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    CanvasComponent
   ],
   imports: [
     BrowserModule,

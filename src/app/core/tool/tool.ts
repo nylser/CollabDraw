@@ -36,4 +36,8 @@ class HasColor {
   }
 }
 
+class HasToPublish {
+
+}
+
 export {HasColor, HasStrokeWidth, Tool}

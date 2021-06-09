@@ -1,23 +1,8 @@
 import {AfterViewInit, Component, ElementRef, NgZone, OnInit, ViewChild,} from '@angular/core';
 import * as paper from 'paper';
 import {v4 as uuidv4} from 'uuid';
-import {Brush} from "./tool/brush";
-import {Eraser} from "./tool/eraser";
-
-class MyPath extends paper.Path {
-  readonly uuid: string;
-
-  constructor() {
-    super();
-    this.uuid = uuidv4();
-  }
-
-  exportJSON(options?: object): string {
-    const res = JSON.parse(super.exportJSON(options));
-    return JSON.stringify({uuid: this.uuid, ...res});
-  }
-
-}
+import {Brush} from "./core/tool/brush";
+import {Eraser} from "./core/tool/eraser";
 
 type Tool = 'brush' | 'eraser';
 
@@ -75,7 +60,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     document.addEventListener('wheel', this.eventListener, {passive: false})
   }
 
-  changeActiveTool(event: Tool){
+  changeActiveTool(event: Tool) {
     switch (event) {
       case "brush":
         this.brushTool.activate();
