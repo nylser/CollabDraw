@@ -30,9 +30,8 @@ io.on("connection", (socket => {
     });
   }
   socket.emit("users", users);
+  socket.on("pointer", (args) => {
+    socket.broadcast.emit("pointer", args)
+  });
 }));
-
-io.on("username:change", (socket => {
-  console.log(socket);
-
-}))
+console.log("Hello, World");
