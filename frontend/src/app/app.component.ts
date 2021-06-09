@@ -4,6 +4,8 @@ import {v4 as uuidv4} from 'uuid';
 import {Brush} from "./core/tool/brush";
 import {Eraser} from "./core/tool/eraser";
 import {SocketService} from "./core/services/socket.service";
+import {Pointer} from "./core/items/pointer";
+import {Path} from "./core/items/path";
 
 type Tool = 'brush' | 'eraser';
 
@@ -22,15 +24,31 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   color: string = "#000";
   activeTool: Tool = 'brush';
 
-  brushTool!: paper.Tool;
-  eraserTool!: paper.Tool;
+  brushTool!: Brush;
+  eraserTool!: Eraser;
 
-  pointer: paper.PointText | undefined;
+  pointer: Pointer | undefined;
+  otherPointers: Map<string, Pointer> = new Map();
+
+  itemMap: Map<string, paper.Item> = new Map();
+
+  pointerLayer!: paper.Layer;
+  defaultLayer!: paper.Layer;
+  names = ["Jürgen", "Korbi", "Sebastian", "Julian", "Adrian"]
 
   constructor(private zone: NgZone,
               private socket: SocketService) {
-    socket.connectWithUserName("test");
-    socket.setUserName("nylser");
+    socket.connectWithUserName(this.names[Math.floor(Math.random() * this.names.length)]);
+    socket.pointerUpdates.subscribe((update: any) => {
+      let pointer = this.otherPointers.get(update.userID);
+      if (!pointer) {
+        this.pointerLayer.activate();
+        pointer = new Pointer(update.userName, false);
+        this.defaultLayer.activate();
+        this.otherPointers.set(update.userID, pointer);
+      }
+      this.otherPointers.get(update.userID)?.handlePoint(new paper.Point(update.pointer.x, update.pointer.y))
+    })
   }
 
 
@@ -83,31 +101,23 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     paper.setup(this.myCanvas.nativeElement);
     let defaultLayer = new paper.Layer();
     let pointerLayer = new paper.Layer();
+    this.defaultLayer = defaultLayer;
+    this.pointerLayer = pointerLayer
     pointerLayer.activate();
-    let pointerRect = new paper.Path.Rectangle(new paper.Rectangle(50, 25, 50, 25), new paper.Size(5, 5));
-    pointerRect.strokeColor = new paper.Color("black");
-    pointerRect.strokeWidth = 1
-    let pointer = new paper.PointText(new paper.Point(50, 50));
-    let pointerGroup = new paper.Group([pointer, pointerRect])
-    this.pointer = pointer
-    pointer.content = "nylser";
-    pointerGroup.visible = false;
-    pointer.fillColor = new paper.Color('black');
-    pointerRect.bounds.width = pointer.bounds.width + 5;
-    pointerRect.bounds.height = pointer.bounds.height + 5;
-    pointer.bounds.center = pointerRect.bounds.center;
+    // this.pointer = new Pointer("test");
     defaultLayer.activate()
     this.brushTool = new Brush();
+    this.brushTool.setHandler((path, type) => {
+      this.handlePathUpdate(path, type);
+    })
     this.eraserTool = new Eraser();
-    let path: paper.Path;
+    this.eraserTool.setHandler((path: Path, type: string) => {
+      this.handlePathUpdate(path, type)
+    })
 
     const insertIntoMap = (path: paper.Path) => {
       const uuid = uuidv4();
       this.uuidToPath.set(uuid, path);
-    }
-
-    const getStrokeWidth = () => {
-      return this.strokeWidth;
     }
 
     const getContext = () => {
@@ -128,14 +138,43 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     paper.view.onMouseMove = function (event: paper.MouseEvent & { event: MouseEvent }) {
-      let point = event.point;
-      point = point.subtract(new paper.Point(0, 20));
-      pointerGroup.bounds.center = point;
-      if (!pointerGroup.visible) {
-        pointerGroup.visible = true
-      }
       getContext().socket.emitPosition(event.point);
+      getContext().pointer?.handlePoint(event.point);
     }
+
+    this.socket.pathUpdates.subscribe(({pathJSON, uuid, type}) => {
+      //console.log(uuid);
+      const item = this.itemMap.get(uuid);
+      if (type === "update") {
+        if (item) {
+          item.importJSON(pathJSON);
+        } else {
+          console.log(pathJSON);
+          let path = new paper.Path().importJSON(pathJSON)
+          this.itemMap.set(uuid, path);
+          //path.strokeWidth = 5;
+          //path.strokeColor = new paper.Color("black");
+          console.log(path);
+        }
+      } else if (type === "delete") {
+        console.log("deleting");
+        if (!item) {
+          console.log("cant find ", uuid);
+        }
+        item?.remove();
+        this.itemMap.delete(uuid);
+      }
+    });
+  }
+
+  handlePathUpdate(path: Path, type: string) {
+    console.log(path, type)
+    if (type === "update") {
+      this.itemMap.set(path.uuid, path);
+    } else if (type === "delete") {
+      this.itemMap.delete(path.uuid);
+    }
+    this.socket.emitPath(path, type);
   }
 
   clearPaper() {

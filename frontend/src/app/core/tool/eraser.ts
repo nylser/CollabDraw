@@ -1,11 +1,16 @@
-import {HasStrokeWidth, Tool} from "./tool";
+import {HasStrokeWidth, PublishPath, Tool} from "./tool";
 import * as paper from 'paper';
 import {applyMixins} from "../types/utils";
+import {Path} from "../items/path";
 
 class Eraser extends Tool {
   hitList: paper.Item[] = [];
   readonly name: string = 'Eraser';
 
+  constructor() {
+    super();
+    this._type = "delete";
+  }
 
   onMouseDrag = (event: paper.MouseEvent) => {
     const hit = paper.project.activeLayer.hitTest(event.point, {
@@ -21,14 +26,17 @@ class Eraser extends Tool {
   };
 
   onMouseUp = (event: paper.MouseEvent) => {
-    this.hitList.forEach(value => value.remove());
+    this.hitList.forEach(value => {
+      value.remove()
+      this.handlePath(value as Path)
+    });
     this.hitList = [];
   }
 }
 
-interface Eraser extends HasStrokeWidth {
+interface Eraser extends HasStrokeWidth, PublishPath {
 }
 
-applyMixins(Eraser, [HasStrokeWidth]);
+applyMixins(Eraser, [HasStrokeWidth, PublishPath]);
 
 export {Eraser}

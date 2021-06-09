@@ -1,7 +1,9 @@
 import {Server} from "socket.io";
+import {createServer} from "http";
 
 
-const io = new Server(3000, {
+const httpServer = createServer();
+const io = new Server(httpServer, {
   serveClient: false,
   // below are engine.IO options
   pingInterval: 10000,
@@ -31,7 +33,15 @@ io.on("connection", (socket => {
   }
   socket.emit("users", users);
   socket.on("pointer", (args) => {
-    socket.broadcast.emit("pointer", args)
+    socket.broadcast.emit("pointer", {
+      pointer: args,
+      userID: socket.id,
+      userName: socket.username,
+    })
   });
+  socket.on("path",(args) => {
+    socket.broadcast.emit("path", args);
+  })
 }));
 console.log("Hello, World");
+httpServer.listen(3000, "0.0.0.0")
