@@ -1,5 +1,4 @@
 import * as paper from 'paper';
-import {Path} from "../items/path";
 
 abstract class Tool extends paper.Tool {
   abstract readonly name: string;
@@ -38,14 +37,14 @@ class HasColor {
 }
 
 class PublishPath {
-  private _handler?: (path: Path, type: string) => void;
+  private _handler?: (path: paper.Path, type: string) => void;
   protected _type?: string | undefined;
 
-  setHandler(handler: (path: Path, type: string) => void) {
+  setHandler(handler: (path: paper.Path, type: string) => void) {
     this._handler = handler;
   }
 
-  protected handlePath(path: Path): void {
+  protected handlePath(path: paper.Path): void {
     if (!this._type) {
       throw new Error("Invalid update type!");
     }

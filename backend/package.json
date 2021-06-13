@@ -5,6 +5,9 @@
   "main": "index.js",
   "dependencies": {
     "node": "^16.1.0",
+    "paper": "^0.12.15",
+    "paper-jsdom": "^0.12.15",
+    "paper-jsdom-canvas": "^0.12.15",
     "socket.io": "^4.1.2"
   },
   "type": "module",

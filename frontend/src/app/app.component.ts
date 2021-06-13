@@ -1,13 +1,12 @@
 import {AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild,} from '@angular/core';
 import * as paper from 'paper';
-import {v4 as uuidv4} from 'uuid';
 import {Brush} from "./core/tool/brush";
 import {Eraser} from "./core/tool/eraser";
 import {SocketService} from "./core/services/socket.service";
 import {Pointer} from "./core/items/pointer";
-import {Path} from "./core/items/path";
+import {Tool} from "./core/tool/tool";
 
-type Tool = 'brush' | 'eraser';
+type ToolString = 'brush' | 'eraser';
 
 @Component({
   selector: 'app-root',
@@ -22,15 +21,16 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   lastDrawn: paper.Item[] = [];
   strokeWidth = 5;
   color: string = "#000";
-  activeTool: Tool = 'brush';
+  activeTool: ToolString = 'brush';
 
   brushTool!: Brush;
   eraserTool!: Eraser;
+  activeATool!: Tool;
 
   pointer: Pointer | undefined;
   otherPointers: Map<string, Pointer> = new Map();
 
-  itemMap: Map<string, paper.Item> = new Map();
+  uuidToItemMap: Map<string, paper.Item> = new Map();
 
   pointerLayer!: paper.Layer;
   defaultLayer!: paper.Layer;
@@ -51,6 +51,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     })
   }
 
+
+  updateColor(event: any) {
+    this.color = event.target.value;
+    this.brushTool.setColor(this.color);
+  }
 
   onScroll(event: WheelEvent) {
     if (event.target == this.myCanvas.nativeElement) {
@@ -81,13 +86,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     document.addEventListener('wheel', this.eventListener, {passive: false})
   }
 
-  changeActiveTool(event: Tool) {
+  changeActiveTool(event: ToolString) {
     switch (event) {
       case "brush":
         this.brushTool.activate();
+        this.activeATool = this.brushTool;
         break
       case "eraser":
         this.eraserTool.activate();
+        this.activeATool = this.brushTool;
         break
     }
 
@@ -106,36 +113,31 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     pointerLayer.activate();
     // this.pointer = new Pointer("test");
     defaultLayer.activate()
+    let path = new paper.Path();
+    let isDragging;
     this.brushTool = new Brush();
     this.brushTool.setHandler((path, type) => {
       this.handlePathUpdate(path, type);
     })
     this.eraserTool = new Eraser();
-    this.eraserTool.setHandler((path: Path, type: string) => {
+    this.eraserTool.setHandler((path: paper.Path, type: string) => {
       this.handlePathUpdate(path, type)
     })
 
-    const insertIntoMap = (path: paper.Path) => {
-      const uuid = uuidv4();
-      this.uuidToPath.set(uuid, path);
-    }
 
     const getContext = () => {
       return this;
     }
-
-
-    const x = localStorage.getItem("project");
-    if (x)
-      defaultLayer.importJSON(x);
-
-    const publish = () => {
-      const proj = defaultLayer.exportJSON();
-      localStorage.setItem("project", proj);
+    let dragTool = new paper.Tool();
+    dragTool.onMouseDown = function (event: any) {
+      isDragging = event.event.altKey;
     }
-    const addLastDrawn = this.zone.run(() => (item: paper.Item) => {
-      this.lastDrawn.push(item);
-    });
+
+    dragTool.onMouseDrag = function (event: paper.ToolEvent) {
+      let offset = event.downPoint.subtract(event.point);
+      paper.view.center = paper.view.center.add(offset);
+    }
+
 
     paper.view.onMouseMove = function (event: paper.MouseEvent & { event: MouseEvent }) {
       getContext().socket.emitPosition(event.point);
@@ -143,18 +145,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.socket.pathUpdates.subscribe(({pathJSON, uuid, type}) => {
-      //console.log(uuid);
-      const item = this.itemMap.get(uuid);
+      const item = this.uuidToItemMap.get(uuid);
       if (type === "update") {
         if (item) {
           item.importJSON(pathJSON);
         } else {
-          console.log(pathJSON);
-          let path = new paper.Path().importJSON(pathJSON)
-          this.itemMap.set(uuid, path);
-          //path.strokeWidth = 5;
-          //path.strokeColor = new paper.Color("black");
-          console.log(path);
+          let path = new paper.Path().importJSON(pathJSON);
+          this.uuidToItemMap.set(uuid, path);
         }
       } else if (type === "delete") {
         console.log("deleting");
@@ -162,23 +159,31 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log("cant find ", uuid);
         }
         item?.remove();
-        this.itemMap.delete(uuid);
+        this.uuidToItemMap.delete(uuid);
       }
     });
   }
 
-  handlePathUpdate(path: Path, type: string) {
-    console.log(path, type)
+  handlePathUpdate(path: paper.Path, type: string) {
+    let uuid = path.data.uuid;
+    if (!uuid) {
+      return;
+    }
     if (type === "update") {
-      this.itemMap.set(path.uuid, path);
+      this.uuidToItemMap.set(path.data.uuid, path);
     } else if (type === "delete") {
-      this.itemMap.delete(path.uuid);
+      this.uuidToItemMap.delete(uuid);
     }
     this.socket.emitPath(path, type);
   }
 
   clearPaper() {
-    paper.project.activeLayer.removeChildren();
+
+    paper.project.activeLayer.getItems({class: paper.Path}).forEach(value => {
+
+      value.remove();
+      this.handlePathUpdate(value as paper.Path, "delete")
+    })
   }
 
   undo() {

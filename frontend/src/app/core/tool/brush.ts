@@ -1,10 +1,10 @@
 import {HasColor, HasStrokeWidth, PublishPath, Tool} from "./tool";
 import * as paper from 'paper';
 import {applyMixins} from "../types/utils";
-import {Path} from "../items/path";
+import {buildPath} from "../items/path";
 
 class Brush extends Tool {
-  currentPath: Path | undefined;
+  currentPath: paper.Path | undefined;
   readonly name: string = 'Brush';
 
   constructor() {
@@ -13,11 +13,12 @@ class Brush extends Tool {
   }
 
   onMouseDown = (event: any) => {
-    this.currentPath = new Path();
+    this.currentPath = buildPath();
     this.currentPath.strokeColor = this.getColor();
     this.currentPath.strokeWidth = this.strokeWidth;
     this.currentPath.strokeJoin = 'round';
     this.currentPath.strokeCap = 'round';
+    this.currentPath.add(event.point);
     this.currentPath.add(event.point);
     this.handlePath(this.currentPath);
   };
@@ -31,7 +32,9 @@ class Brush extends Tool {
 
   onMouseUp = (event: paper.MouseEvent) => {
     if (this.currentPath) {
-      this.currentPath.simplify(10);
+      if (this.currentPath.segments.length > 3) {
+        this.currentPath.simplify(2.5);
+      }
       this.handlePath(this.currentPath);
     }
   }

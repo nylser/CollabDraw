@@ -1,7 +1,6 @@
 import {Injectable} from '@angular/core';
 import {io} from "socket.io-client";
 import {BehaviorSubject, Subject} from "rxjs";
-import {Path} from "../items/path";
 
 @Injectable({
   providedIn: 'root'
@@ -27,6 +26,12 @@ export class SocketService {
     this.socket.on("pointer", (pointer) => {
       this.pointerUpdates.next(pointer);
     })
+    this.socket.once("storage", (storage) => {
+      const exportedStorage = storage.exportedStorage;
+      for (let s in exportedStorage) {
+        this.pathUpdates.next({pathJSON: exportedStorage[s], uuid: s, type: "update"});
+      }
+    })
   }
 
   public connectWithUserName(username: string) {
@@ -39,11 +44,11 @@ export class SocketService {
   }
 
   public emitPosition(pointer: paper.Point) {
-    //this.socket.emit("pointer", {x: pointer.x, y: pointer.y})
+    this.socket.emit("pointer", {x: pointer.x, y: pointer.y})
   }
 
-  public emitPath(path: Path, type: string) {
-    this.socket.emit("path", {pathJSON: path.exportJSON(), uuid: path.uuid, type})
+  public emitPath(path: paper.Item, type: string) {
+    this.socket.emit("path", {pathJSON: path.exportJSON(), uuid: path.data.uuid, type})
   }
 
 

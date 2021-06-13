@@ -1,7 +1,6 @@
 import {HasStrokeWidth, PublishPath, Tool} from "./tool";
 import * as paper from 'paper';
 import {applyMixins} from "../types/utils";
-import {Path} from "../items/path";
 
 class Eraser extends Tool {
   hitList: paper.Item[] = [];
@@ -28,7 +27,8 @@ class Eraser extends Tool {
   onMouseUp = (event: paper.MouseEvent) => {
     this.hitList.forEach(value => {
       value.remove()
-      this.handlePath(value as Path)
+      if (value.data.uuid)
+        this.handlePath(value as paper.Path)
     });
     this.hitList = [];
   }
