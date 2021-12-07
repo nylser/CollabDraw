@@ -11,6 +11,7 @@ import {MatInputModule} from "@angular/material/input";
 import {MatSelectModule} from "@angular/material/select";
 import {MatOptionModule} from "@angular/material/core";
 import { CanvasComponent } from './core/components/canvas/canvas.component';
+import {MatCheckboxModule} from "@angular/material/checkbox";
 
 
 @NgModule({
@@ -28,6 +29,7 @@ import { CanvasComponent } from './core/components/canvas/canvas.component';
     BrowserAnimationsModule,
     MatSelectModule,
     MatOptionModule,
+    MatCheckboxModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

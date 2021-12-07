@@ -7,6 +7,7 @@ export class Pointer {
   private pointText: paper.PointText;
   private pointRect: paper.Path.Rectangle;
   private point: paper.Path;
+  private targetPoint?: paper.Point;
 
   constructor(name: string, self: boolean = true) {
     this._name = name;
@@ -29,12 +30,30 @@ export class Pointer {
   }
 
   handlePoint(point: paper.Point) {
+    this.targetPoint = point;
+    // this.point.bounds.center = point;
+    //point = point.subtract(new paper.Point(0, 20));
+    //this.delegateGroup.bounds.center = point;
+    //if (!this.delegateGroup.visible) {
+    //  this.delegateGroup.visible = true
+    //}
+  }
+
+  setPosition(point: paper.Point) {
     this.point.bounds.center = point;
     point = point.subtract(new paper.Point(0, 20));
     this.delegateGroup.bounds.center = point;
     if (!this.delegateGroup.visible) {
       this.delegateGroup.visible = true
     }
+  }
+
+  getPosition() {
+    return this.point.bounds.center;
+  }
+
+  getTargetPosition() {
+    return this.targetPoint;
   }
 
   get name(): string {

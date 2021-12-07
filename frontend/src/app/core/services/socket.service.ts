@@ -7,17 +7,17 @@ import {BehaviorSubject, Subject} from "rxjs";
 })
 export class SocketService {
 
-  URL = "http://192.168.178.35:3000"
+  URL = "http://localhost:3000"
   socket = io(this.URL, {autoConnect: false});
 
   userSubject = new BehaviorSubject([]);
   pointerUpdates = new Subject();
-  pathUpdates: Subject<{pathJSON: string, uuid: string, type: string}> = new Subject()
+  pathUpdates: Subject<{ pathJSON: string, uuid: string, type: string }> = new Subject()
 
   constructor() {
     this.socket.onAny((event, ...args) => {
     })
-    this.socket.on("users", (users) =>  {
+    this.socket.on("users", (users) => {
       this.userSubject.next(users);
     })
     this.socket.on("path", (path) => {
@@ -43,14 +43,25 @@ export class SocketService {
     this.socket.emit("username_change", {username})
   }
 
-  public emitPosition(pointer: paper.Point) {
-    this.socket.emit("pointer", {x: pointer.x, y: pointer.y})
+  public emitPosition(pointer: paper.Point | null, view: paper.View) {
+    const viewport = view.bounds;
+    this.socket.emit("pointer", {
+      x: pointer?.x,
+      y: pointer?.y,
+      viewport: {
+        x: viewport.x,
+        y: viewport.y,
+        width: viewport.width,
+        height: viewport.height,
+      },
+      matrix: view.matrix.values,
+      zoom: view.zoom
+    })
   }
 
   public emitPath(path: paper.Item, type: string) {
     this.socket.emit("path", {pathJSON: path.exportJSON(), uuid: path.data.uuid, type})
   }
-
 
 
 }

@@ -5,8 +5,9 @@ import {Eraser} from "./core/tool/eraser";
 import {SocketService} from "./core/services/socket.service";
 import {Pointer} from "./core/items/pointer";
 import {Tool} from "./core/tool/tool";
+import {Move} from "./core/tool/move";
 
-type ToolString = 'brush' | 'eraser';
+type ToolString = 'brush' | 'eraser' | 'move';
 
 @Component({
   selector: 'app-root',
@@ -17,7 +18,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('myCanvas')
   myCanvas!: ElementRef<HTMLCanvasElement>;
   title = 'collabdraw';
-  uuidToPath: Map<string, paper.Path> = new Map();
   lastDrawn: paper.Item[] = [];
   strokeWidth = 5;
   color: string = "#000";
@@ -25,10 +25,12 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   brushTool!: Brush;
   eraserTool!: Eraser;
+  moveTool!: Move;
   activeATool!: Tool;
 
   pointer: Pointer | undefined;
   otherPointers: Map<string, Pointer> = new Map();
+  viewPorts: Map<string, paper.Path> = new Map();
 
   uuidToItemMap: Map<string, paper.Item> = new Map();
 
@@ -40,14 +42,33 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
               private socket: SocketService) {
     socket.connectWithUserName(this.names[Math.floor(Math.random() * this.names.length)]);
     socket.pointerUpdates.subscribe((update: any) => {
-      let pointer = this.otherPointers.get(update.userID);
-      if (!pointer) {
-        this.pointerLayer.activate();
-        pointer = new Pointer(update.userName, false);
-        this.defaultLayer.activate();
-        this.otherPointers.set(update.userID, pointer);
+      if (update.pointer.x && update.pointer.y) {
+        let pointer = this.otherPointers.get(update.userID);
+        if (!pointer) {
+          this.pointerLayer.activate();
+          pointer = new Pointer(update.userName, false);
+          this.defaultLayer.activate();
+          this.otherPointers.set(update.userID, pointer);
+        }
+        this.otherPointers.get(update.userID)?.handlePoint(new paper.Point(update.pointer.x, update.pointer.y))
       }
-      this.otherPointers.get(update.userID)?.handlePoint(new paper.Point(update.pointer.x, update.pointer.y))
+      const {x, y, width, height} = update.pointer.viewport;
+      const viewport = new paper.Rectangle(x, y, width, height);
+      let path = this.viewPorts.get(update.userID);
+      if (!path) {
+        this.pointerLayer.activate();
+        path = new paper.Path.Rectangle(viewport);
+        path.strokeColor = new paper.Color('orange');
+        this.defaultLayer.activate();
+        this.viewPorts.set(update.userID, path);
+      }
+      path.bounds = viewport;
+      if (this.follow) {
+        paper.view.center = viewport.center;
+        paper.view.zoom = update.pointer.zoom;
+        this.socket.emitPosition(null, paper.view);
+      }
+
     })
   }
 
@@ -76,11 +97,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         paper.view.center = c.add(d.multiply((factor - 1) / factor));
       }
       event.preventDefault();
+      this.socket.emitPosition(null, paper.view);
     }
 
   }
 
   eventListener = this.onScroll.bind(this);
+  follow: boolean = false;
 
   ngOnInit(): void {
     document.addEventListener('wheel', this.eventListener, {passive: false})
@@ -95,6 +118,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       case "eraser":
         this.eraserTool.activate();
         this.activeATool = this.brushTool;
+        break
+      case "move":
+        this.moveTool.activate();
+        this.activeATool = this.moveTool;
         break
     }
 
@@ -136,12 +163,30 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     dragTool.onMouseDrag = function (event: paper.ToolEvent) {
       let offset = event.downPoint.subtract(event.point);
       paper.view.center = paper.view.center.add(offset);
+      getContext().socket.emitPosition(event.point, paper.view);
     }
 
+    dragTool.activate()
+
+    this.moveTool = new Move();
+    this.moveTool.setHandler((path: paper.Path, type: string) => {
+      this.handlePathUpdate(path, type)
+    })
 
     paper.view.onMouseMove = function (event: paper.MouseEvent & { event: MouseEvent }) {
-      getContext().socket.emitPosition(event.point);
+      getContext().socket.emitPosition(event.point, paper.view);
       getContext().pointer?.handlePoint(event.point);
+    }
+
+    paper.view.onFrame = function () {
+      for (let pointer of getContext().otherPointers.values()) {
+        const target = pointer.getTargetPosition();
+        if (!target) {
+          continue
+        }
+        let vector = target.subtract(pointer.getPosition()).divide(10);
+        pointer.setPosition(pointer.getPosition().add(vector));
+      }
     }
 
     this.socket.pathUpdates.subscribe(({pathJSON, uuid, type}) => {
@@ -178,15 +223,18 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   clearPaper() {
-
     paper.project.activeLayer.getItems({class: paper.Path}).forEach(value => {
-
       value.remove();
       this.handlePathUpdate(value as paper.Path, "delete")
     })
   }
 
   undo() {
-    this.lastDrawn.pop()?.remove();
+    let x = this.lastDrawn.pop();
+    if (x) {
+      x.remove()
+      this.handlePathUpdate(x as paper.Path, "delete")
+    }
+
   }
 }
