@@ -32,7 +32,7 @@ const io = new Server(webServer, {
 const drawingNamespace = io.of("/drawing");
 setupDrawingEndpoint(drawingNamespace);
 const mediasoupNamespace = io.of("/mediasoup");
-setupMediasoupEndpoint(mediasoupNamespace);
+setupMediasoupEndpoint(mediasoupNamespace, io);
 
 webServer.listen(3000, "0.0.0.0");
 console.log("Webserver is running");

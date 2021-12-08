@@ -29,9 +29,14 @@ export class ChatSocketService {
     connect() {
         this.socket.auth = { username: 'TestUser' };
         this.socket.connect();
+        this.registerSocketEvents();
     }
 
-    registerSocketEvents() {}
+    registerSocketEvents() {
+        this.socket.on('new-producer', (data) => {
+            console.log('new-producer', data);
+        });
+    }
 
     async loadDevice() {
         const routerRtpCapabilities = await new Promise<RtpCapabilities>(

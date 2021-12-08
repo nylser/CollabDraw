@@ -6,7 +6,7 @@ const mediaCodecs = config.mediasoup.router.mediaCodecs;
 
 const rooms = {};
 
-export async function setupMediasoupEndpoint(peers) {
+export async function setupMediasoupEndpoint(peers, io) {
     worker = await createWorker();
     console.log(worker);
     console.log("setting up mediasoup namespace");
@@ -18,15 +18,16 @@ export async function setupMediasoupEndpoint(peers) {
         if (!socket.username) {
             return next(new Error("invalid username"));
         }
-        socket.join(roomName);
         next();
     });
     peers.on("connection", async (socket) => {
         console.log(`${socket.username} joins ${socket.roomName}`);
+        socket.join(socket.roomName);
         if (!(socket.roomName in rooms)) {
             rooms[socket.roomName] = {
                 router: undefined,
                 transports: {},
+                producers: {},
                 transportMap: {},
                 producerMap: {},
             };
@@ -37,11 +38,14 @@ export async function setupMediasoupEndpoint(peers) {
         }
         const router = rooms[socket.roomName]["router"];
         const socketTransports = { send: [], recv: [] };
+        const socketProducers = [];
         const producerMap = rooms[socket.roomName].producerMap;
         const transportMap = rooms[socket.roomName].transportMap;
+
         let rtpCapabilities;
 
         rooms[socket.roomName].transports[socket.id] = socketTransports;
+        rooms[socket.roomName].producers[socket.id] = socketProducers;
 
         socket.on("getRouterRtpCapabilities", (callback) => {
             callback(router.rtpCapabilities);
@@ -89,18 +93,20 @@ export async function setupMediasoupEndpoint(peers) {
                     appData,
                 });
                 producerMap[producer.id] = producer;
+                socketProducers.push(producer);
 
                 // notify new producers
-                socket
-                    .to(socket.roomName)
-                    .emit("new-producer", { id: producer.id });
+                io.to(socket.roomName).emit("new-producer", {
+                    id: producer.id,
+                });
 
+                socket.emit("new-producer", { id: producer.id });
                 callback({ id: producer.id });
             }
         );
 
         socket.on("disconnect", () => {
-            producerMap.forEach((producer) => producer.close());
+            socketProducers.forEach((producer) => producer.close());
         });
     });
 }
