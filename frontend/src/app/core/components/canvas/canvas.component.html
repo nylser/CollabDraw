@@ -1,3 +1,59 @@
+<mat-card>
+    <mat-card-content>
+        <h2>Brush config</h2>
+        <section>
+            <button (click)="clearPaper()">Clear</button>
+            <button (click)="undo()">Undo</button>
+        </section>
+        <section *ngIf="activeTool == 'brush' && this.brushTool">
+            <mat-slider
+                min="1"
+                max="10"
+                step="0.25"
+                [(ngModel)]="this.brushTool.strokeWidth"
+            ></mat-slider>
+        </section>
+        <section *ngIf="activeTool == 'eraser' && this.eraserTool">
+            <mat-slider
+                min="1"
+                max="10"
+                step="0.5"
+                [(ngModel)]="this.eraserTool.strokeWidth"
+            ></mat-slider>
+        </section>
+        <section>
+            <mat-form-field *ngIf="pointer">
+                <input
+                    matInput
+                    type="text"
+                    name="Test"
+                    id="test"
+                    [(ngModel)]="pointer.name"
+                />
+            </mat-form-field>
+        </section>
+        <section *ngIf="activeTool === 'brush'">
+            <input
+                type="color"
+                matInput
+                [value]="color"
+                (change)="updateColor($event)"
+            />
+        </section>
+        <mat-form-field>
+            <mat-label>Tool</mat-label>
+            <mat-select
+                [(ngModel)]="activeTool"
+                (valueChange)="changeActiveTool($event)"
+            >
+                <mat-option [value]="'brush'">Brush</mat-option>
+                <mat-option [value]="'eraser'">Eraser</mat-option>
+                <mat-option [value]="'move'">Move</mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-checkbox [(ngModel)]="follow">Follow?</mat-checkbox>
+    </mat-card-content>
+</mat-card>
 <div class="c-container">
-  <canvas resize #myCanvas></canvas>
+    <canvas resize #myCanvas></canvas>
 </div>

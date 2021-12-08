@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "express": "^4.17.1",
+    "mediasoup": "^3.9.2",
     "node": "^16.1.0",
     "paper": "^0.12.15",
     "paper-jsdom": "^0.12.15",

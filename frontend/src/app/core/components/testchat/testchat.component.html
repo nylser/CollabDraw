@@ -1,0 +1,5 @@
+<p>testchat works!</p>
+<mat-checkbox [(ngModel)]="useVideo">Video</mat-checkbox>
+<mat-checkbox [(ngModel)]="useMicrophone">Microphone</mat-checkbox>
+<button mat-raised-button (click)="getUserMedia()">GetUserMedia</button>
+<video #ownVideo class="ownVideo"></video>
